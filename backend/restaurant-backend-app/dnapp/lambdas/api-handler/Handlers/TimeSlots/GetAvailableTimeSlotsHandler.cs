@@ -59,10 +59,30 @@ public class GetAvailableTimeSlotsHandler : IApiRequestHandler
         context.Logger.Log($"Table id: {tableId}");
         context.Logger.Log($"Reservations: {JsonSerializer.Serialize(reservations)}");
 
-        var workingDayStart = new DateTime(startTime.Year, startTime.Month, startTime.Day, 10, 0, 0, DateTimeKind.Unspecified);
-        var workingDayEnd = new DateTime(startTime.Year, startTime.Month, startTime.Day, 22, 0, 0, DateTimeKind.Unspecified);
+        var workingDayStart = new DateTime(startTime.Year, startTime.Month, startTime.Day, 10, 0, 0, DateTimeKind.Utc);
+        // If the requested start time is already past 22:00 UTC on its day,
+        // shift the working day to the next calendar day so users in timezones
+        // ahead of UTC still get slots for their local daytime.
+        var workingDayEnd = new DateTime(startTime.Year, startTime.Month, startTime.Day, 22, 0, 0, DateTimeKind.Utc);
+        if (startTime.TimeOfDay >= new TimeSpan(22, 0, 0))
+        {
+            workingDayStart = workingDayStart.AddDays(1);
+            workingDayEnd = workingDayEnd.AddDays(1);
+        }
 
         var slots = new List<TimeSlotResponse>();
+
+        // Clamp startTime into the working day window. Users in timezones ahead of
+        // UTC may have their local daytime fall late on the previous UTC day.
+        if (startTime < workingDayStart)
+        {
+            startTime = workingDayStart;
+        }
+        if (startTime >= workingDayEnd)
+        {
+            return ResponseBuilder.CreateSuccessResponse(slots, 200);
+        }
+
         var marginTo90Minutes =
             ReservationDuration.TotalMinutes - ((startTime - workingDayStart).TotalMinutes % ReservationDuration.TotalMinutes);
         DateTime current;
