@@ -39,6 +39,13 @@ public class TableService : ITableService
     public async Task<IEnumerable<Table>> GetAvailableTablesAsync(string? locationId, int capacity, DateTime startTime)
     {
         var workingDayEnd = new DateTime(startTime.Year, startTime.Month, startTime.Day, 22, 0, 0, DateTimeKind.Utc);
+        // If the requested start time is already at or past 22:00 UTC on its day,
+        // use the next day's 22:00 as the working-day end so that users in timezones
+        // ahead of UTC still get availability for their local daytime.
+        if (startTime.TimeOfDay >= new TimeSpan(22, 0, 0))
+        {
+            workingDayEnd = workingDayEnd.AddDays(1);
+        }
         var minSlotLength = TimeSpan.FromMinutes(90);
 
         IEnumerable<Table> tables;
