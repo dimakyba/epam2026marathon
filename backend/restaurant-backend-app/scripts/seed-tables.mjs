@@ -1,56 +1,57 @@
 #!/usr/bin/env node
 /**
  * Seed DynamoDB Tables table with tables for Georgian restaurants.
+ * Dynamically queries current location IDs from the Locations table.
  * Usage: node scripts/seed-tables.mjs
  */
-import { DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, PutItemCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
 import { randomUUID } from 'node:crypto';
 
 const client = new DynamoDBClient({ region: 'us-west-2' });
 
-// Location IDs from the Locations table (in order: Tbilisi, Batumi, Kutaisi)
-const LOCATION_IDS = [
-  'e5dbf1ef-d488-47a3-ab87-1a5c6ad30a01',
-  'ff06af86-77a0-4d92-8ef8-fbe478742574',
-  'f107ebe2-08f2-4cb1-91ee-a25c2f9de6a0',
-];
+async function getLocationIds() {
+  const result = await client.send(new ScanCommand({
+    TableName: 'Locations',
+    ProjectionExpression: 'id, address',
+  }));
+  // Sort by address to get consistent order: Tbilisi, Batumi, Kutaisi
+  const locations = result.Items?.sort((a, b) =>
+    a.address.S.localeCompare(b.address.S)
+  ) ?? [];
+  return locations.map((l) => l.id.S);
+}
 
-const TABLES = [
-  { locationIdIndex: 0, tableNumber: 1, capacity: 2 },
-  { locationIdIndex: 0, tableNumber: 2, capacity: 4 },
-  { locationIdIndex: 0, tableNumber: 3, capacity: 4 },
-  { locationIdIndex: 0, tableNumber: 4, capacity: 6 },
-  { locationIdIndex: 0, tableNumber: 5, capacity: 2 },
-  { locationIdIndex: 0, tableNumber: 6, capacity: 4 },
-  { locationIdIndex: 1, tableNumber: 1, capacity: 2 },
-  { locationIdIndex: 1, tableNumber: 2, capacity: 4 },
-  { locationIdIndex: 1, tableNumber: 3, capacity: 6 },
-  { locationIdIndex: 1, tableNumber: 4, capacity: 8 },
-  { locationIdIndex: 1, tableNumber: 5, capacity: 4 },
-  { locationIdIndex: 1, tableNumber: 6, capacity: 2 },
-  { locationIdIndex: 1, tableNumber: 7, capacity: 6 },
-  { locationIdIndex: 1, tableNumber: 8, capacity: 4 },
-  { locationIdIndex: 2, tableNumber: 1, capacity: 2 },
-  { locationIdIndex: 2, tableNumber: 2, capacity: 4 },
-  { locationIdIndex: 2, tableNumber: 3, capacity: 4 },
-  { locationIdIndex: 2, tableNumber: 4, capacity: 6 },
-  { locationIdIndex: 2, tableNumber: 5, capacity: 2 },
-  { locationIdIndex: 2, tableNumber: 6, capacity: 4 },
+const TABLES_PER_LOCATION = [
+  // tableNumber, capacity
+  [1, 2], [2, 4], [3, 4], [4, 6], [5, 2], [6, 4],
 ];
 
 async function main() {
-  for (const t of TABLES) {
-    await client.send(new PutItemCommand({
-      TableName: 'Tables',
-      Item: {
-        id: { S: randomUUID() },
-        locationId: { S: LOCATION_IDS[t.locationIdIndex] },
-        capacity: { N: String(t.capacity) },
-        tableNumber: { N: String(t.tableNumber) },
-      },
-    }));
+  const locationIds = await getLocationIds();
+  if (locationIds.length === 0) {
+    console.error('No locations found. Run seed-dynamodb.mjs first.');
+    process.exit(1);
   }
-  console.log('Seeded', TABLES.length, 'tables');
+
+  console.log(`Found ${locationIds.length} locations:`, locationIds);
+
+  let count = 0;
+  for (const [locIdx, locationId] of locationIds.entries()) {
+    for (const [tableNumber, capacity] of TABLES_PER_LOCATION) {
+      await client.send(new PutItemCommand({
+        TableName: 'Tables',
+        Item: {
+          id: { S: randomUUID() },
+          locationId: { S: locationId },
+          capacity: { N: String(capacity) },
+          tableNumber: { N: String(tableNumber) },
+        },
+      }));
+      count++;
+    }
+  }
+
+  console.log(`Seeded ${count} tables across ${locationIds.length} locations`);
 }
 
 main().catch((err) => {
