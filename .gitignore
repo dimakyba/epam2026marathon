@@ -12,6 +12,11 @@ Thumbs.db
 # Node
 node_modules/
 
+# Python / Syndicate venv
+*.venv/
+syndicate_venv/
+.venv/
+
 # Local env
 .env
 .env.local

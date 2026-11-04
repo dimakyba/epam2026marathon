@@ -1,0 +1,19 @@
+{
+  "name": "restaurant-backend-app",
+  "version": "1.0.0",
+  "description": "You can find Web API documentation [here](docs/ApiRoutes.md).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1161.0"
+  }
+}
