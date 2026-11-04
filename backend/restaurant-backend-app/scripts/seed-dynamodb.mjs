@@ -32,6 +32,31 @@ const LOCATIONS = [
   },
 ];
 
+const TABLES = [
+  // Tbilisi (locationIdIndex 0)
+  { locationIdIndex: 0, tableNumber: 1, capacity: 2 },
+  { locationIdIndex: 0, tableNumber: 2, capacity: 4 },
+  { locationIdIndex: 0, tableNumber: 3, capacity: 4 },
+  { locationIdIndex: 0, tableNumber: 4, capacity: 6 },
+  { locationIdIndex: 0, tableNumber: 5, capacity: 2 },
+  { locationIdIndex: 0, tableNumber: 6, capacity: 4 },
+  // Batumi (locationIdIndex 1)
+  { locationIdIndex: 1, tableNumber: 1, capacity: 2 },
+  { locationIdIndex: 1, tableNumber: 2, capacity: 4 },
+  { locationIdIndex: 1, tableNumber: 3, capacity: 6 },
+  { locationIdIndex: 1, tableNumber: 4, capacity: 8 },
+  { locationIdIndex: 1, tableNumber: 5, capacity: 4 },
+  { locationIdIndex: 1, tableNumber: 6, capacity: 2 },
+  { locationIdIndex: 1, tableNumber: 7, capacity: 6 },
+  { locationIdIndex: 1, tableNumber: 8, capacity: 4 },
+  // Kutaisi (locationIdIndex 2)
+  { locationIdIndex: 2, tableNumber: 1, capacity: 2 },
+  { locationIdIndex: 2, tableNumber: 2, capacity: 4 },
+  { locationIdIndex: 2, tableNumber: 3, capacity: 4 },
+  { locationIdIndex: 2, tableNumber: 4, capacity: 6 },
+  { locationIdIndex: 2, tableNumber: 5, capacity: 2 },
+  { locationIdIndex: 2, tableNumber: 6, capacity: 4 },
+];
 const DISHES = [
   {
     locationIdIndex: 0,
@@ -174,7 +199,17 @@ async function main() {
     });
   }
 
-  console.log('\nSeed complete. Locations:', locationIds.length, '| Dishes:', DISHES.length);
+  for (const table of TABLES) {
+    const id = randomUUID();
+    await put('Tables', {
+      id: { S: id },
+      locationId: { S: locationIds[table.locationIdIndex] },
+      capacity: { N: String(table.capacity) },
+      tableNumber: { N: String(table.tableNumber) },
+    });
+  }
+
+  console.log('\nSeed complete. Locations:', locationIds.length, '| Dishes:', DISHES.length, '| Tables:', TABLES.length);
 }
 
 main().catch((err) => {
